@@ -139,6 +139,10 @@ export const keepLogin = async (req: Request, res: Response) => {
     const author = await prisma.author.findFirst({
       where: { id: req.author?.id },
     });
+    res.status(200).send({
+      status: "ok",
+      author,
+    });
   } catch (error) {
     res.status(400).send({
       status: "error",
