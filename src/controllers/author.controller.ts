@@ -11,14 +11,13 @@ const prisma = new PrismaClient({ log: ["error", "info", "query", "warn"] });
 
 export const createAuthor = async (req: Request, res: Response) => {
   try {
-    const { name, email, password } = req.body;
+    const { password } = req.body;
     const salt = await genSalt(10);
     const hashPassword = await hash(password, salt);
 
     const authors = await prisma.author.create({
       data: {
-        name,
-        email,
+        ...req.body,
         password: hashPassword,
       },
     });
@@ -26,15 +25,15 @@ export const createAuthor = async (req: Request, res: Response) => {
     const payload = {
       id: authors.id,
     };
-
     const token = sign(payload, process.env.KEY_JWT!, { expiresIn: "1h" });
+    const link = `http://localhost:3000/verify/${token}`;
 
     const templatePath = path.join(__dirname, "../templates", "register.html");
     const templateSource = fs.readFileSync(templatePath, "utf-8");
     const compiledTemplate = handlebars.compile(templateSource);
     const html = compiledTemplate({
       name: authors.name,
-      token,
+      link,
     });
 
     await transporter.sendMail({
@@ -49,10 +48,10 @@ export const createAuthor = async (req: Request, res: Response) => {
       message: "author registered",
       authors,
     });
-  } catch (error) {
+  } catch (err) {
     res.status(400).send({
       status: "error",
-      message: error,
+      message: err,
     });
   }
 };
@@ -116,7 +115,6 @@ export const authorLogin = async (req: Request, res: Response) => {
 
     const payload = {
       id: authors.id,
-      isActive: authors.isActive,
     };
 
     const token = sign(payload, process.env.KEY_JWT!, { expiresIn: "5m" });
